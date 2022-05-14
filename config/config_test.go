@@ -132,3 +132,12 @@ func TestUserHomeDir(t *testing.T) {
 func TestLoad(t *testing.T) {
 	Load()
 }
+
+func TestHome(t *testing.T) {
+	got := expect.Home()
+	expect := expect.DataRoot
+
+	if got != expect {
+		t.Errorf("expected %s but got %s", expect, got)
+	}
+}

@@ -7,8 +7,16 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+type Homer interface {
+	Home() string
+}
+
 type Config struct {
 	DataRoot string `yaml:"dataRoot"`
+}
+
+func (c *Config) Home() string {
+	return c.DataRoot
 }
 
 type userHomeDirer struct{}
