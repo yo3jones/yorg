@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/yo3jones/yorg/config"
@@ -340,4 +342,44 @@ func (rc *TestReadCloser) Read(b []byte) (int, error) {
 func (rc *TestReadCloser) Close() error {
 	rc.closed = true
 	return nil
+}
+
+func TestId(t *testing.T) {
+	r, err1 := regexp.Compile(
+		"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+	)
+	if err1 != nil {
+		t.Error(err1)
+	}
+
+	i := &ider{}
+	got := i.Id()
+
+	if !r.MatchString(got) {
+		t.Errorf("expected a UUID format but got \n%s", got)
+	}
+}
+
+func TestNow(t *testing.T) {
+	n := &nower{}
+	expect := time.Now()
+	got := n.Now()
+
+	if got.Unix()-expect.Unix() > 2 {
+		t.Errorf("expected \n%s but got \n%s", expect, got)
+	}
+}
+
+func TestNew(t *testing.T) {
+	got := New[TestSpec, TestContext](
+		&TestCreator{},
+		&TestContextCreator{},
+		&TestHomer{},
+		&TestWriteCloserCreator{},
+		&TestReadCloserCreator{},
+	)
+
+	if got == nil {
+		t.Errorf("expected a service but got nil")
+	}
 }

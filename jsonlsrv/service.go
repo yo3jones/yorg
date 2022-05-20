@@ -4,6 +4,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/yo3jones/yorg/config"
 	"github.com/yo3jones/yorg/service"
 )
@@ -14,8 +15,20 @@ type Ider interface {
 	Id() string
 }
 
+type ider struct{}
+
+func (i *ider) Id() string {
+	return uuid.NewString()
+}
+
 type Nower interface {
 	Now() time.Time
+}
+
+type nower struct{}
+
+func (n *nower) Now() time.Time {
+	return time.Now()
 }
 
 type Creator[S Spec] interface {
@@ -54,4 +67,22 @@ type Service[S Spec, C any] struct {
 	homer              config.Homer
 	writeCloserCreator WriteCloserCreator[C]
 	readCloserCreator  ReadCloserCreator[C]
+}
+
+func New[S Spec, C any](
+	creator Creator[S],
+	contextCreator ContextCreator[S, C],
+	homer config.Homer,
+	writeCloserCreator WriteCloserCreator[C],
+	readCloserCreator ReadCloserCreator[C],
+) *Service[S, C] {
+	return &Service[S, C]{
+		ider:               &ider{},
+		nower:              &nower{},
+		creator:            creator,
+		contextCreator:     contextCreator,
+		homer:              homer,
+		writeCloserCreator: writeCloserCreator,
+		readCloserCreator:  readCloserCreator,
+	}
 }
