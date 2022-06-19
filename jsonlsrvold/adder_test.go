@@ -1,4 +1,4 @@
-package jsonlsrv
+package jsonlsrvold
 
 import (
 	"reflect"
@@ -18,10 +18,11 @@ func Test(t *testing.T) {
 	setup := func() {
 		now, _ = time.Parse("2006-01-02T15:04:05", "2022-05-07T07:21:01")
 		writeCloser = &TestWriteCloser{w: &strings.Builder{}}
-		writeCloserCreator =
-			&TestWriteCloserCreator{writeClosers: map[string]*TestWriteCloser{
+		writeCloserCreator = &TestWriteCloserCreator{
+			writeClosers: map[string]*TestWriteCloser{
 				"someHome/active": writeCloser,
-			}}
+			},
+		}
 
 		s = Service[TestSpec, TestContext]{
 			ider:               &TestIder{ids: []string{"someId"}},

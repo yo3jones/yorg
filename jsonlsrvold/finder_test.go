@@ -1,4 +1,4 @@
-package jsonlsrv
+package jsonlsrvold
 
 import (
 	"reflect"
@@ -256,7 +256,6 @@ func TestFind(t *testing.T) {
 	})
 
 	t.Run("when fails", func(t *testing.T) {
-
 		t.Run("with CreateReadCloser error", func(t *testing.T) {
 			setup()
 			readCloserCreator.shouldError = true

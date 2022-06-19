@@ -1,4 +1,4 @@
-package jsonlsrv
+package jsonlsrvold
 
 import (
 	"io"
