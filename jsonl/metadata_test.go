@@ -1,6 +1,8 @@
 package jsonl
 
 import (
+	"fmt"
+	"io/fs"
 	"io/ioutil"
 	"os"
 	"reflect"
@@ -9,6 +11,45 @@ import (
 
 	"github.com/yo3jones/yorg/util"
 )
+
+type errorMetadataMarshalIndentWrapper struct{}
+
+func (*errorMetadataMarshalIndentWrapper) marshalIndent(a any) ([]byte, error) {
+	return nil, fmt.Errorf("errorMetadataMarshalIndentWrapper error")
+}
+
+func expectError(
+	t *testing.T,
+	expectError string,
+	err error,
+) (shouldContinue bool) {
+	expectingError := len(expectError) > 0
+
+	if expectingError && err == nil {
+		t.Fatalf("expected an error but got nil")
+		return false
+	}
+
+	if expectingError && err.Error() != expectError {
+		t.Fatalf(
+			"expected an error with \n[%s]\n but got \n[%s]",
+			expectError,
+			err.Error(),
+		)
+		return false
+	}
+
+	if !expectingError && err != nil {
+		t.Fatal(err)
+		return false
+	}
+
+	if expectingError {
+		return false
+	}
+
+	return true
+}
 
 func TestLoadMeadata(t *testing.T) {
 	var err error
@@ -74,24 +115,7 @@ func TestLoadMeadata(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := LoadMetadata(tc.jsonlName)
 
-			expectingError := len(tc.expectError) > 0
-
-			if expectingError && err == nil {
-				t.Errorf("expected an error but got nil")
-				return
-			}
-
-			if expectingError && err.Error() != tc.expectError {
-				t.Errorf(
-					"expected an error with \n%s\n but got \n%s",
-					tc.expectError,
-					err.Error(),
-				)
-				return
-			}
-
-			if !expectingError && err != nil {
-				t.Error(err)
+			if !expectError(t, tc.expectError, err) {
 				return
 			}
 
@@ -101,6 +125,121 @@ func TestLoadMeadata(t *testing.T) {
 					util.Pretty(tc.expect),
 					util.Pretty(got),
 				)
+			}
+		})
+	}
+}
+
+func TestSaveMetadata(t *testing.T) {
+	validFilename := "valid.metadata.json"
+
+	type test struct {
+		name               string
+		metadata           *JsonlMetadata
+		marshalWrapper     metadataMarshalIndentWrapper
+		filesExist         bool
+		readOnlyPermission bool
+		expectError        string
+		expect             string
+	}
+
+	tests := []test{
+		{
+			name: "with invalid name",
+			metadata: &JsonlMetadata{
+				Name: "foo.jsonll",
+			},
+			expectError: "invalid jsonl file name foo.jsonll",
+		},
+		{
+			name: "with marshal error",
+			metadata: &JsonlMetadata{
+				Name: "foo.jsonl",
+			},
+			marshalWrapper: &errorMetadataMarshalIndentWrapper{},
+			expectError:    "errorMetadataMarshalIndentWrapper error",
+		},
+		{
+			name: "with write error",
+			metadata: &JsonlMetadata{
+				Name: "valid.jsonl",
+			},
+			filesExist:         true,
+			readOnlyPermission: true,
+			expectError:        "open valid.metadata.json: permission denied",
+		},
+		{
+			name: "with existing files",
+			metadata: &JsonlMetadata{
+				Name:          "valid.jsonl",
+				Version:       "dev",
+				MaxLineLength: 100,
+			},
+			filesExist: true,
+			expect: `{
+  "version": "dev",
+  "maxLineLength": 100
+}`,
+		},
+		{
+			name: "without existing files",
+			metadata: &JsonlMetadata{
+				Name:          "valid.jsonl",
+				Version:       "dev",
+				MaxLineLength: 100,
+			},
+			filesExist: false,
+			expect: `{
+  "version": "dev",
+  "maxLineLength": 100
+}`,
+		},
+	}
+
+	setup := func(tc test) {
+		os.Remove(validFilename)
+		if !tc.filesExist {
+			return
+		}
+		var perm fs.FileMode = 0666
+		if tc.readOnlyPermission {
+			perm = 0444
+		}
+		_ = ioutil.WriteFile(
+			validFilename,
+			[]byte(`some data`),
+			perm,
+		)
+	}
+
+	teardown := func() {
+		os.Remove(validFilename)
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			setup(tc)
+			defer teardown()
+
+			if tc.marshalWrapper != nil {
+				orig := metadataMarshalIndentWrapperInst
+				metadataMarshalIndentWrapperInst = tc.marshalWrapper
+				defer func() { metadataMarshalIndentWrapperInst = orig }()
+			}
+
+			err := SaveMetadata(tc.metadata)
+
+			if !expectError(t, tc.expectError, err) {
+				return
+			}
+
+			var got []byte
+			if got, err = ioutil.ReadFile(validFilename); err != nil {
+				t.Fatal(err)
+			}
+
+			if string(got) != tc.expect {
+				t.Errorf("expected \n%s\n but got \n%s", tc.expect, string(got))
 			}
 		})
 	}
@@ -144,24 +283,7 @@ func TestGetMetadataName(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := getMetadataName(tc.jsonlName)
 
-			expectingError := len(tc.expectError) > 0
-
-			if expectingError && err == nil {
-				t.Errorf("expected an error but got nil")
-				return
-			}
-
-			if expectingError && err.Error() != tc.expectError {
-				t.Errorf(
-					"expected an error with \n%s\n but got \n%s",
-					tc.expectError,
-					err.Error(),
-				)
-				return
-			}
-
-			if !expectingError && err != nil {
-				t.Error(err)
+			if !expectError(t, tc.expectError, err) {
 				return
 			}
 

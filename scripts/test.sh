@@ -13,7 +13,8 @@ then
 fi
 
 clear \
-&& printf "go test -v -coverprofile cover.out $path \\\\\n" \
+&& printf "go test -coverprofile cover.out $path \\\\\n" \
 && printf "&& go tool cover -func cover.out\n\n" \
 && go test -v -coverprofile cover.out $path \
-&& go tool cover -func cover.out
+&& go tool cover -func cover.out \
+| grep -v "100.0%$"
